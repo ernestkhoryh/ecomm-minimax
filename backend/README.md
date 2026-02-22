@@ -1,6 +1,14 @@
 # Marketplace Backend (Express + MySQL)
 
-Traditional Node.js backend to support the Vite frontend using an Express API and MySQL database.
+Traditional Node.js backend to support the Vite frontend using an Express API and relational database schema.
+
+## Important schema note
+
+The backend SQL schema now **follows `database/schema.sql` exactly** and is mirrored at:
+
+- `backend/sql/schema.mysql.sql`
+
+This keeps backend schema definitions aligned with the canonical project schema.
 
 ## Features
 
@@ -16,11 +24,8 @@ Traditional Node.js backend to support the Vite frontend using an Express API an
    cd backend
    npm install
    ```
-2. Copy environment config:
-   ```bash
-   cp .env.example .env
-   ```
-3. Create tables:
+2. Update environment config in `.env` (already committed in this backend folder).
+3. Load schema:
    ```bash
    mysql -u <user> -p < backend/sql/schema.mysql.sql
    ```
