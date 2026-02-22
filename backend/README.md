@@ -15,6 +15,7 @@ This keeps backend schema definitions aligned with the canonical project schema.
 - JWT auth (`/api/auth/register`, `/api/auth/login`)
 - Category endpoints (`/api/categories`)
 - Listing endpoints with pagination/search (`/api/listings`)
+- MySQL schema derived from `database/schema.sql` and adapted for MySQL enums/indexes
 
 ## Setup
 
@@ -43,3 +44,8 @@ This keeps backend schema definitions aligned with the canonical project schema.
 - `GET /api/listings`
 - `GET /api/listings/:id`
 - `POST /api/listings` (authenticated)
+
+## Notes
+
+- IDs use UUID strings (`CHAR(36)`) to keep parity with frontend/Supabase-style entities.
+- Full-text listing search uses MySQL `FULLTEXT` index + `MATCH ... AGAINST`.

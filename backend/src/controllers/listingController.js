@@ -90,7 +90,7 @@ async function createListing(req, res, next) {
       price,
       categoryId,
       priceType,
-      condition,
+      itemCondition,
       brand,
       model,
       locationCity,
@@ -110,7 +110,7 @@ async function createListing(req, res, next) {
 
     await pool.query(
       `INSERT INTO listings
-      (id, seller_id, category_id, title, slug, description, price, price_type, \`condition\`, brand,
+      (id, seller_id, category_id, title, slug, description, price, price_type, item_condition, brand,
        model, location_city, location_state, location_country, offers_shipping, shipping_fee, status, published_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'published', NOW())`,
       [
@@ -122,7 +122,7 @@ async function createListing(req, res, next) {
         description,
         price,
         priceType || 'fixed',
-        condition || 'good',
+        itemCondition || 'good',
         brand || null,
         model || null,
         locationCity || null,
