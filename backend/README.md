@@ -12,22 +12,21 @@ Traditional Node.js backend to support the Vite frontend using an Express API an
 ## Setup
 
 1. Install dependencies:
-   ```bash
+   bash
    cd backend
    npm install
-   ```
+
 2. Copy environment config:
-   ```bash
+   bash
    cp .env.example .env
-   ```
+
 3. Create tables:
-   ```bash
-   mysql -u <user> -p < backend/sql/schema.mysql.sql
-   ```
+   bash
+   mysql -u < user > -p < backend/sql/schema.mysql.sql
+
 4. Run the API:
-   ```bash
+   bash
    npm run dev
-   ```
 
 ## API Summary
 
