@@ -1,11 +1,9 @@
-const mysql = require('mysql2/promise');
+const { Pool } = require('pg');
 const env = require('./env');
 
-const pool = mysql.createPool({
+const pool = new Pool({
   ...env.db,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
+  max: 10
 });
 
 module.exports = pool;

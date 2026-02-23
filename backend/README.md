@@ -1,40 +1,61 @@
-# Marketplace Backend (Express + MySQL)
+# Marketplace Backend (Express + PostgreSQL)
 
-Traditional Node.js backend to support the Vite frontend using an Express API and relational database schema.
+Traditional Node.js backend to support the Vite frontend using an Express API and PostgreSQL schema.
 
-## Important schema note
+## Schema
 
-The backend SQL schema now **follows `database/schema.sql` exactly** and is mirrored at:
+- PostgreSQL backend schema: `backend/sql/schema.postgresql.sql`
+- Canonical project schema: `database/schema.sql`
 
-- `backend/sql/schema.mysql.sql`
+SELECT datname FROM pg_database;
 
-This keeps backend schema definitions aligned with the canonical project schema.
+SELECT tablename
+FROM pg_tables
+WHERE schemaname = 'public';
 
 ## Features
 
 - JWT auth (`/api/auth/register`, `/api/auth/login`)
 - Category endpoints (`/api/categories`)
 - Listing endpoints with pagination/search (`/api/listings`)
-- MySQL schema derived from `database/schema.sql` and adapted for MySQL enums/indexes
+- PostgreSQL-compatible schema and queries
 
 ## Setup
 
 1. Install dependencies:
-   bash
-   cd backend
-   npm install
 
-2. Copy environment config:
-   bash
-   cp .env.example .env
+bash
+cd backend
+npm install
 
-3. Create tables:
-   bash
-   mysql -u < user > -p < backend/sql/schema.mysql.sql
+2.Configure environment variables in `backend/.env`:
 
-4. Run the API:
-   bash
-   npm run dev
+bash
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_NAME=marketplace
+DB_SSL=false
+PORT=4000
+JWT_SECRET=change-me
+JWT_EXPIRES_IN=7d
+
+3.Create the database and apply schema:
+
+bash
+createdb marketplace
+psql -d marketplace -f backend/sql/schema.postgresql.sql
+
+"C:\Program Files\PostgreSQL\18\bin\createdb.exe" -h localhost -p 5432 -U postgres marketplace
+
+"C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -d marketplace -f
+"C:\Users\ernes\test-folder\ecomm-minimax\backend\sql\schema.postgresql.sql"
+
+4.Run the API:
+
+bash
+npm run dev
 
 ## API Summary
 
@@ -49,5 +70,5 @@ This keeps backend schema definitions aligned with the canonical project schema.
 
 ## Notes
 
-- IDs use UUID strings (`CHAR(36)`) to keep parity with frontend/Supabase-style entities.
-- Full-text listing search uses MySQL `FULLTEXT` index + `MATCH ... AGAINST`.
+- IDs are UUIDs (PostgreSQL `UUID` type).
+- Listing search uses PostgreSQL `ILIKE` filtering across title/description/brand/model.

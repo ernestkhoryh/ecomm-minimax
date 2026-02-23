@@ -4,10 +4,10 @@ const pool = require('../config/db');
 
 async function listCategories(req, res, next) {
   try {
-    const [rows] = await pool.query(
+    const result = await pool.query(
       'SELECT * FROM categories WHERE is_active = TRUE ORDER BY sort_order ASC, name ASC'
     );
-    return res.json({ success: true, data: rows });
+    return res.json({ success: true, data: result.rows });
   } catch (error) {
     return next(error);
   }
@@ -25,7 +25,7 @@ async function createCategory(req, res, next) {
 
     await pool.query(
       `INSERT INTO categories (id, name, slug, description, parent_id, sort_order)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6)`,
       [id, name, slug, description || null, parentId || null, sortOrder || 0]
     );
 
