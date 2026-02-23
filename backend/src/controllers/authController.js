@@ -20,8 +20,11 @@ async function register(req, res, next) {
       return res.status(400).json({ success: false, message: 'email and password are required' });
     }
 
-    const [existing] = await pool.query('SELECT id FROM users WHERE email = ? OR username = ?', [email, username || null]);
-    if (existing.length) {
+    const existing = await pool.query(
+      'SELECT id FROM users WHERE email = $1 OR username = $2',
+      [email, username || null]
+    );
+    if (existing.rows.length) {
       return res.status(409).json({ success: false, message: 'Email or username already exists' });
     }
 
@@ -30,7 +33,7 @@ async function register(req, res, next) {
 
     await pool.query(
       `INSERT INTO users (id, email, password_hash, username, display_name, role)
-       VALUES (?, ?, ?, ?, ?, 'user')`,
+       VALUES ($1, $2, $3, $4, $5, 'user')`,
       [id, email, passwordHash, username || null, displayName || null]
     );
 
@@ -50,12 +53,12 @@ async function login(req, res, next) {
   try {
     const { email, password } = req.body;
 
-    const [rows] = await pool.query(
-      'SELECT id, email, password_hash, role, is_active FROM users WHERE email = ?',
+    const rows = await pool.query(
+      'SELECT id, email, password_hash, role, is_active FROM users WHERE email = $1',
       [email]
     );
 
-    const user = rows[0];
+    const user = rows.rows[0];
 
     if (!user) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
@@ -81,4 +84,24 @@ async function login(req, res, next) {
   }
 }
 
-module.exports = { register, login };
+async function me(req, res, next) {
+  try {
+    const rows = await pool.query(
+      `SELECT id, email, username, display_name, avatar_url, role, is_active, created_at
+       FROM users
+       WHERE id = $1`,
+      [req.user.id]
+    );
+
+    const user = rows.rows[0];
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    return res.json({ success: true, user });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+module.exports = { register, login, me };

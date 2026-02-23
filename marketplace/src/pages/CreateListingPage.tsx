@@ -6,7 +6,6 @@ import { z } from 'zod';
 import { useDropzone } from 'react-dropzone';
 import { useListingStore } from '@/store/listingStore';
 import { useAuthStore } from '@/store/authStore';
-import { supabase } from '@/lib/supabase';
 import {
   Upload,
   X,
@@ -162,23 +161,20 @@ export default function CreateListingPage() {
 
     for (const image of images) {
       if (image.url) {
-        // Already uploaded
         uploadedUrls.push(image.url);
-      } else if (image.file) {
-        // Need to upload
-        const filename = `${user?.id}/${Date.now()}-${image.file.name}`;
-        const { data, error } = await supabase.storage
-          .from('listings')
-          .upload(filename, image.file);
-
-        if (error) throw error;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('listings')
-          .getPublicUrl(data.path);
-
-        uploadedUrls.push(publicUrl);
+        continue;
       }
+
+      if (!image.file) continue;
+
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(new Error('Failed to read image file'));
+        reader.readAsDataURL(image.file);
+      });
+
+      uploadedUrls.push(dataUrl);
     }
 
     return uploadedUrls;
@@ -219,7 +215,7 @@ export default function CreateListingPage() {
             ? 'Listing updated!'
             : 'Listing published!'
         );
-        navigate(isEditing ? `/listing/${result.listing?.slug}` : '/my-listings');
+        navigate('/my-listings');
       } else {
         toast.error(result.error || 'Something went wrong');
       }

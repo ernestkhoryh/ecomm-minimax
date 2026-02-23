@@ -1,21 +1,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { supabase } from '@/lib/supabase';
+import { apiRequest } from '@/lib/api';
 import type { User } from '@/types/database';
-import bcrypt from 'bcryptjs';
-import { SignJWT, jwtVerify } from 'jose';
-
-const JWT_SECRET = new TextEncoder().encode(
-  import.meta.env.VITE_JWT_SECRET || 'default-secret-change-me'
-);
 
 interface AuthState {
   user: User | null;
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-
-  // Actions
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (data: RegisterData) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
@@ -34,24 +26,60 @@ interface RegisterData {
   display_name?: string;
 }
 
-// Helper to generate JWT
-const generateToken = async (userId: string): Promise<string> => {
-  return new SignJWT({ userId })
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuedAt()
-    .setExpirationTime('7d')
-    .sign(JWT_SECRET);
-};
-
-// Helper to verify JWT
-export const verifyToken = async (token: string): Promise<{ userId: string } | null> => {
+function decodeJwtPayload(token: string): { exp?: number } | null {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
-    return { userId: payload.userId as string };
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(json);
   } catch {
     return null;
   }
-};
+}
+
+function normalizeUser(apiUser: Partial<User> & { id: string; email: string; role: User['role'] }): User {
+  const now = new Date().toISOString();
+  return {
+    id: apiUser.id,
+    email: apiUser.email,
+    email_verified: apiUser.email_verified ?? false,
+    password_hash: null,
+    username: apiUser.username ?? null,
+    display_name: apiUser.display_name ?? null,
+    avatar_url: apiUser.avatar_url ?? null,
+    bio: apiUser.bio ?? null,
+    phone: apiUser.phone ?? null,
+    phone_verified: apiUser.phone_verified ?? false,
+    location_city: apiUser.location_city ?? null,
+    location_state: apiUser.location_state ?? null,
+    location_country: apiUser.location_country ?? 'Philippines',
+    location_lat: apiUser.location_lat ?? null,
+    location_lng: apiUser.location_lng ?? null,
+    role: apiUser.role,
+    is_active: apiUser.is_active ?? true,
+    is_banned: apiUser.is_banned ?? false,
+    ban_reason: apiUser.ban_reason ?? null,
+    banned_at: apiUser.banned_at ?? null,
+    id_verified: apiUser.id_verified ?? false,
+    verified_at: apiUser.verified_at ?? null,
+    subscription_tier: apiUser.subscription_tier ?? 'free',
+    subscription_expires_at: apiUser.subscription_expires_at ?? null,
+    listings_count: apiUser.listings_count ?? 0,
+    sales_count: apiUser.sales_count ?? 0,
+    rating_average: apiUser.rating_average ?? 0,
+    rating_count: apiUser.rating_count ?? 0,
+    followers_count: apiUser.followers_count ?? 0,
+    following_count: apiUser.following_count ?? 0,
+    google_id: apiUser.google_id ?? null,
+    facebook_id: apiUser.facebook_id ?? null,
+    last_login_at: apiUser.last_login_at ?? null,
+    last_login_ip: apiUser.last_login_ip ?? null,
+    failed_login_attempts: apiUser.failed_login_attempts ?? 0,
+    locked_until: apiUser.locked_until ?? null,
+    created_at: apiUser.created_at ?? now,
+    updated_at: apiUser.updated_at ?? now,
+  };
+}
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -67,72 +95,23 @@ export const useAuthStore = create<AuthState>()(
       login: async (email: string, password: string) => {
         set({ isLoading: true });
         try {
-          // Get user by email
-          const { data: user, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('email', email.toLowerCase())
-            .single();
+          const result = await apiRequest<{
+            success: boolean;
+            token: string;
+            user: { id: string; email: string; role: User['role'] };
+          }>('/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ email: email.toLowerCase(), password }),
+          });
 
-          if (error || !user) {
-            set({ isLoading: false });
-            return { success: false, error: 'Invalid email or password' };
-          }
-
-          // Check if user is banned
-          if (user.is_banned) {
-            set({ isLoading: false });
-            return { success: false, error: 'Your account has been suspended' };
-          }
-
-          // Check if account is locked
-          if (user.locked_until && new Date(user.locked_until) > new Date()) {
-            set({ isLoading: false });
-            return { success: false, error: 'Account is temporarily locked. Please try again later.' };
-          }
-
-          // Verify password
-          if (!user.password_hash) {
-            set({ isLoading: false });
-            return { success: false, error: 'Please login with Google' };
-          }
-
-          const isValid = await bcrypt.compare(password, user.password_hash);
-          if (!isValid) {
-            // Increment failed attempts
-            await supabase
-              .from('users')
-              .update({
-                failed_login_attempts: user.failed_login_attempts + 1,
-                locked_until: user.failed_login_attempts >= 4
-                  ? new Date(Date.now() + 15 * 60 * 1000).toISOString()
-                  : null,
-              })
-              .eq('id', user.id);
-
-            set({ isLoading: false });
-            return { success: false, error: 'Invalid email or password' };
-          }
-
-          // Reset failed attempts and update last login
-          await supabase
-            .from('users')
-            .update({
-              failed_login_attempts: 0,
-              locked_until: null,
-              last_login_at: new Date().toISOString(),
-            })
-            .eq('id', user.id);
-
-          // Generate JWT token
-          const token = await generateToken(user.id);
-
-          // Remove password_hash from user object
-          const { password_hash: _, ...safeUser } = user;
+          const me = await apiRequest<{ success: boolean; user: Partial<User> & { id: string; email: string; role: User['role'] } }>(
+            '/auth/me',
+            { token: result.token }
+          );
 
           set({
-            user: safeUser as User,
-            token,
+            user: normalizeUser(me.user),
+            token: result.token,
             isAuthenticated: true,
             isLoading: false,
           });
@@ -140,70 +119,35 @@ export const useAuthStore = create<AuthState>()(
           return { success: true };
         } catch (error) {
           set({ isLoading: false });
-          return { success: false, error: 'An error occurred. Please try again.' };
+          return { success: false, error: error instanceof Error ? error.message : 'Login failed' };
         }
       },
 
       register: async (data: RegisterData) => {
         set({ isLoading: true });
         try {
-          // Check if email already exists
-          const { data: existingEmail } = await supabase
-            .from('users')
-            .select('id')
-            .eq('email', data.email.toLowerCase())
-            .single();
-
-          if (existingEmail) {
-            set({ isLoading: false });
-            return { success: false, error: 'Email already registered' };
-          }
-
-          // Check if username already exists
-          const { data: existingUsername } = await supabase
-            .from('users')
-            .select('id')
-            .eq('username', data.username.toLowerCase())
-            .single();
-
-          if (existingUsername) {
-            set({ isLoading: false });
-            return { success: false, error: 'Username already taken' };
-          }
-
-          // Hash password
-          const salt = await bcrypt.genSalt(12);
-          const password_hash = await bcrypt.hash(data.password, salt);
-
-          // Create user
-          const { data: user, error } = await supabase
-            .from('users')
-            .insert({
+          const result = await apiRequest<{
+            success: boolean;
+            token: string;
+            user: { id: string; email: string; role: User['role'] };
+          }>('/auth/register', {
+            method: 'POST',
+            body: JSON.stringify({
               email: data.email.toLowerCase(),
-              password_hash,
+              password: data.password,
               username: data.username.toLowerCase(),
-              display_name: data.display_name || data.username,
-              role: 'user',
-              is_active: true,
-              email_verified: false,
-            })
-            .select()
-            .single();
+              displayName: data.display_name || data.username,
+            }),
+          });
 
-          if (error) {
-            set({ isLoading: false });
-            return { success: false, error: 'Failed to create account' };
-          }
-
-          // Generate JWT token
-          const token = await generateToken(user.id);
-
-          // Remove password_hash from user object
-          const { password_hash: _, ...safeUser } = user;
+          const me = await apiRequest<{ success: boolean; user: Partial<User> & { id: string; email: string; role: User['role'] } }>(
+            '/auth/me',
+            { token: result.token }
+          );
 
           set({
-            user: safeUser as User,
-            token,
+            user: normalizeUser(me.user),
+            token: result.token,
             isAuthenticated: true,
             isLoading: false,
           });
@@ -211,7 +155,7 @@ export const useAuthStore = create<AuthState>()(
           return { success: true };
         } catch (error) {
           set({ isLoading: false });
-          return { success: false, error: 'An error occurred. Please try again.' };
+          return { success: false, error: error instanceof Error ? error.message : 'Registration failed' };
         }
       },
 
@@ -225,80 +169,39 @@ export const useAuthStore = create<AuthState>()(
 
       refreshUser: async () => {
         const { token } = get();
-        if (!token) return;
+        if (!token) {
+          set({ isLoading: false });
+          return;
+        }
 
-        try {
-          const payload = await verifyToken(token);
-          if (!payload) {
-            set({ user: null, token: null, isAuthenticated: false });
-            return;
-          }
-
-          const { data: user, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', payload.userId)
-            .single();
-
-          if (error || !user) {
-            set({ user: null, token: null, isAuthenticated: false });
-            return;
-          }
-
-          const { password_hash: _, ...safeUser } = user;
-          set({ user: safeUser as User, isAuthenticated: true });
-        } catch {
+        const payload = decodeJwtPayload(token);
+        if (payload?.exp && payload.exp * 1000 < Date.now()) {
           set({ user: null, token: null, isAuthenticated: false });
+          return;
+        }
+
+        set({ isLoading: true });
+        try {
+          const result = await apiRequest<{ success: boolean; user: Partial<User> & { id: string; email: string; role: User['role'] } }>(
+            '/auth/me',
+            { token }
+          );
+          set({ user: normalizeUser(result.user), isAuthenticated: true, isLoading: false });
+        } catch {
+          set({ user: null, token: null, isAuthenticated: false, isLoading: false });
         }
       },
 
-      updateProfile: async (data: Partial<User>) => {
-        const { user } = get();
-        if (!user) return { success: false, error: 'Not authenticated' };
-
-        try {
-          const { data: updated, error } = await supabase
-            .from('users')
-            .update(data)
-            .eq('id', user.id)
-            .select()
-            .single();
-
-          if (error) {
-            return { success: false, error: 'Failed to update profile' };
-          }
-
-          const { password_hash: _, ...safeUser } = updated;
-          set({ user: safeUser as User });
-
-          return { success: true };
-        } catch {
-          return { success: false, error: 'An error occurred' };
-        }
+      updateProfile: async (_data: Partial<User>) => {
+        return { success: false, error: 'Profile update endpoint is not available yet in backend API' };
       },
 
       loginWithGoogle: async () => {
-        const { error } = await supabase.auth.signInWithOAuth({
-          provider: 'google',
-          options: {
-            redirectTo: `${window.location.origin}/auth/callback`,
-          },
-        });
-        if (error) console.error('Google login error:', error);
+        console.warn('Google OAuth is not available in the local backend API');
       },
 
-      resetPassword: async (email: string) => {
-        try {
-          const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: `${window.location.origin}/auth/reset-password`,
-          });
-          if (error) {
-            return { success: false, error: error.message };
-          }
-          return { success: true };
-        } catch {
-          return { success: false, error: 'An error occurred' };
-        }
+      resetPassword: async (_email: string) => {
+        return { success: false, error: 'Password reset endpoint is not available yet in backend API' };
       },
     }),
     {
