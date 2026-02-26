@@ -137,8 +137,8 @@ export default function MessagesPage() {
             filteredConversations.map((conv) => {
               const otherUser = getOtherUser(conv);
               const unreadCount = getUnreadCount(conv);
-              const listingImage = (conv.listing as any)?.images?.find((img: { is_primary: boolean }) => img.is_primary)?.url ||
-                (conv.listing as any)?.images?.[0]?.url;
+              const listingImage = conv.listing?.images?.find((img: { is_primary: boolean }) => img.is_primary)?.url ||
+                conv.listing?.images?.[0]?.url;
 
               return (
                 <Link
@@ -214,7 +214,7 @@ export default function MessagesPage() {
           <div className="flex items-center justify-between p-4 border-b border-gray-200">
             <div className="flex items-center space-x-3">
               <button
-                onClick={() => navigate('/messages')} aria-label='Back to messages'
+                onClick={() => navigate('/messages')}
                 className="md:hidden p-2 hover:bg-gray-100 rounded-lg"
               >
                 <ArrowLeft className="w-5 h-5" />
@@ -246,7 +246,7 @@ export default function MessagesPage() {
               })()}
             </div>
 
-            <button className="p-2 hover:bg-gray-100 rounded-lg" aria-label="More options"  >
+            <button className="p-2 hover:bg-gray-100 rounded-lg">
               <MoreVertical className="w-5 h-5 text-gray-500" />
             </button>
           </div>
@@ -257,9 +257,9 @@ export default function MessagesPage() {
               to={`/listing/${currentConversation.listing.slug}`}
               className="flex items-center space-x-3 p-3 bg-gray-50 border-b border-gray-200 hover:bg-gray-100 transition-colors"
             >
-              {(currentConversation.listing as any).images?.[0] && (
+              {currentConversation.listing.images?.[0] && (
                 <img
-                  src={(currentConversation.listing as any).images[0].url}
+                  src={currentConversation.listing.images[0].url}
                   alt=""
                   className="w-12 h-12 rounded-lg object-cover"
                 />
@@ -323,7 +323,7 @@ export default function MessagesPage() {
           {/* Message Input */}
           <div className="p-4 border-t border-gray-200">
             <div className="flex items-center space-x-3">
-              <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg" aria-label="Attach image"  >
+              <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg">
                 <ImageIcon className="w-6 h-6" />
               </button>
               <input
@@ -334,10 +334,10 @@ export default function MessagesPage() {
                 onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
                 className="flex-1 px-4 py-2.5 bg-gray-100 border border-transparent rounded-xl focus:bg-white focus:border-gray-300 transition-colors"
               />
-              <button 
+              <button
                 onClick={handleSendMessage}
                 disabled={!messageInput.trim()}
-                className="p-2.5 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-xl hover:from-red-600 hover:to-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Send message"
+                className="p-2.5 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-xl hover:from-red-600 hover:to-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Send className="w-5 h-5" />
               </button>

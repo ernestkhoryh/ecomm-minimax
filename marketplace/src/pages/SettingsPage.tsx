@@ -97,6 +97,7 @@ export default function SettingsPage() {
     accept: { 'image/*': ['.jpeg', '.jpg', '.png', '.webp'] },
     maxSize: 2 * 1024 * 1024,
     maxFiles: 1,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any);
 
   const onSubmit = async (data: ProfileForm) => {
@@ -312,7 +313,7 @@ export default function SettingsPage() {
                       <div className="flex items-center space-x-3">
                         <div className="flex-1 relative">
                           <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                          <input aria-label="Email"
+                          <input
                             type="email"
                             value={user.email}
                             disabled
@@ -418,7 +419,7 @@ export default function SettingsPage() {
                         <p className="text-sm text-gray-500">{item.description}</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
-                        <input aria-label={`Toggle ${item.label} notifications`} type="checkbox" defaultChecked className="sr-only peer" />
+                        <input type="checkbox" defaultChecked className="sr-only peer" />
                         <div className="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-red-500/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
                       </label>
                     </div>

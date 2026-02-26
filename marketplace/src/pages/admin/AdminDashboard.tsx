@@ -424,14 +424,14 @@ export default function AdminDashboard() {
                               <Eye className="w-4 h-4" />
                             </Link>
                             {u.is_banned ? (
-                              <button aria-label="Unban user"
+                              <button
                                 onClick={() => handleBanUser(u.id, false)}
                                 className="p-1 text-green-500 hover:text-green-700"
                               >
                                 <ShieldCheck className="w-4 h-4" />
                               </button>
                             ) : (
-                              <button aria-label="Ban user"
+                              <button
                                 onClick={() => handleBanUser(u.id, true)}
                                 className="p-1 text-red-500 hover:text-red-700"
                               >
@@ -508,13 +508,13 @@ export default function AdminDashboard() {
                             >
                               <Eye className="w-4 h-4" />
                             </Link>
-                            <button aria-label="Suspend listing"
+                            <button
                               onClick={() => handleSuspendListing(listing.id)}
                               className="p-1 text-yellow-500 hover:text-yellow-700"
                             >
                               <AlertTriangle className="w-4 h-4" />
                             </button>
-                            <button aria-label="Delete listing"
+                            <button
                               onClick={() => handleDeleteListing(listing.id)}
                               className="p-1 text-red-500 hover:text-red-700"
                             >
