@@ -1,19 +1,17 @@
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
+import { config } from './config/env';
 import { authRouter } from './routes/auth';
 import { listingsRouter } from './routes/listings';
 import { messagesRouter } from './routes/messages';
 import { usersRouter } from './routes/users';
 
-dotenv.config();
-
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = config.port;
 
 // Middleware
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: config.clientUrl,
   credentials: true,
 }));
 app.use(express.json());
@@ -35,7 +33,7 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   console.error('Error:', err.message);
   res.status(500).json({
     error: 'Internal Server Error',
-    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+    message: config.nodeEnv === 'development' ? err.message : undefined
   });
 });
 

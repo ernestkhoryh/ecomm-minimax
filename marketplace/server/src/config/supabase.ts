@@ -1,13 +1,10 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY!;
+import { config } from './env';
 
 // Admin client (service role) - bypasses RLS
 export const supabaseAdmin: SupabaseClient = createClient(
-  supabaseUrl,
-  supabaseServiceKey,
+  config.supabaseUrl,
+  config.supabaseServiceKey,
   {
     auth: {
       autoRefreshToken: false,
@@ -18,8 +15,8 @@ export const supabaseAdmin: SupabaseClient = createClient(
 
 // Public client (anon key) - uses RLS
 export const supabasePublic: SupabaseClient = createClient(
-  supabaseUrl,
-  supabaseAnonKey,
+  config.supabaseUrl,
+  config.supabaseAnonKey,
   {
     auth: {
       autoRefreshToken: true,

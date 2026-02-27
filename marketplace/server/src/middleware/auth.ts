@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { supabaseAdmin } from '../config/supabase';
+import { config } from '../config/env';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'default-secret';
+const JWT_SECRET = config.jwtSecret;
 
 export interface AuthRequest extends Request {
   user?: {

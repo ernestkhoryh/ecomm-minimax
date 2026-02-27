@@ -3,10 +3,11 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { supabaseAdmin } from '../config/supabase';
+import { config } from '../config/env';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'default-secret';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+const JWT_SECRET = config.jwtSecret;
+const JWT_EXPIRES_IN = config.jwtExpiresIn;
 
 // Generate JWT token
 const generateToken = (userId: string, email: string): string => {
