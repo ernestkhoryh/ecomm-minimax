@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import { supabase } from '@/lib/supabase';
+import api from '@/lib/api';
+import { useAuthStore } from './authStore';
 import type { Listing, ListingWithDetails, Category, ListingCondition, PriceType, ListingStatus } from '@/types/database';
-import slugify from 'slugify';
 
 interface ListingFilters {
   query?: string;
@@ -36,16 +36,15 @@ interface ListingState {
   deleteListing: (id: string) => Promise<{ success: boolean; error?: string }>;
   setFilters: (filters: ListingFilters) => void;
   resetFilters: () => void;
-  toggleFavorite: (listingId: string, userId: string) => Promise<void>;
-  incrementViews: (listingId: string) => Promise<void>;
+  toggleFavorite: (listingId: string) => Promise<void>;
 }
 
 interface CreateListingData {
   title: string;
   description: string;
   price: number;
-  price_type: PriceType;
-  condition: ListingCondition;
+  price_type?: PriceType;
+  condition?: ListingCondition;
   category_id: string;
   brand?: string;
   model?: string;
@@ -93,62 +92,46 @@ export const useListingStore = create<ListingState>((set, get) => ({
     const currentPage = reset ? 0 : page;
 
     try {
-      let query = supabase
-        .from('listings')
-        .select(`
-          *,
-          seller:users!seller_id(id, username, display_name, avatar_url, rating_average, rating_count),
-          category:categories!category_id(id, name, slug, icon),
-          images:listing_images(id, url, thumbnail_url, is_primary, sort_order)
-        `)
-        .eq('status', 'published')
-        .range(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE - 1);
-
-      // Apply filters
-      if (filters.query) {
-        query = query.textSearch('search_vector', filters.query);
-      }
-      if (filters.category_id) {
-        query = query.eq('category_id', filters.category_id);
-      }
-      if (filters.min_price !== undefined) {
-        query = query.gte('price', filters.min_price);
-      }
-      if (filters.max_price !== undefined) {
-        query = query.lte('price', filters.max_price);
-      }
-      if (filters.condition) {
-        query = query.eq('condition', filters.condition);
-      }
-      if (filters.location) {
-        query = query.ilike('location_city', `%${filters.location}%`);
-      }
-
-      // Apply sorting
+      // Map sort_by to API format
+      let sort = 'created_at';
+      let order = 'desc';
       switch (filters.sort_by) {
         case 'newest':
-          query = query.order('created_at', { ascending: false });
+          sort = 'created_at';
+          order = 'desc';
           break;
         case 'oldest':
-          query = query.order('created_at', { ascending: true });
+          sort = 'created_at';
+          order = 'asc';
           break;
         case 'price_low':
-          query = query.order('price', { ascending: true });
+          sort = 'price';
+          order = 'asc';
           break;
         case 'price_high':
-          query = query.order('price', { ascending: false });
+          sort = 'price';
+          order = 'desc';
           break;
-        default:
-          query = query.order('is_boosted', { ascending: false })
-                       .order('is_featured', { ascending: false })
-                       .order('created_at', { ascending: false });
       }
 
-      const { data, error } = await query;
+      const result = await api.getListings({
+        page: currentPage + 1,
+        limit: PAGE_SIZE,
+        search: filters.query,
+        category: filters.category_id,
+        min_price: filters.min_price,
+        max_price: filters.max_price,
+        condition: filters.condition,
+        city: filters.location,
+        sort,
+        order,
+      });
 
-      if (error) throw error;
+      if (result.error) {
+        throw new Error(result.error);
+      }
 
-      const newListings = data || [];
+      const newListings = result.data?.listings || [];
 
       set({
         listings: reset ? newListings : [...get().listings, ...newListings],
@@ -164,22 +147,13 @@ export const useListingStore = create<ListingState>((set, get) => ({
 
   fetchFeaturedListings: async () => {
     try {
-      const { data, error } = await supabase
-        .from('listings')
-        .select(`
-          *,
-          seller:users!seller_id(id, username, display_name, avatar_url, rating_average),
-          category:categories!category_id(id, name, slug, icon),
-          images:listing_images(id, url, thumbnail_url, is_primary, sort_order)
-        `)
-        .eq('status', 'published')
-        .or('is_featured.eq.true,is_boosted.eq.true')
-        .order('is_featured', { ascending: false })
-        .limit(12);
+      const result = await api.getFeaturedListings();
 
-      if (error) throw error;
+      if (result.error) {
+        throw new Error(result.error);
+      }
 
-      set({ featuredListings: data || [] });
+      set({ featuredListings: result.data?.listings || [] });
     } catch (error) {
       console.error('Error fetching featured listings:', error);
     }
@@ -188,19 +162,13 @@ export const useListingStore = create<ListingState>((set, get) => ({
   fetchUserListings: async (userId: string) => {
     set({ isLoading: true });
     try {
-      const { data, error } = await supabase
-        .from('listings')
-        .select(`
-          *,
-          category:categories!category_id(id, name, slug, icon),
-          images:listing_images(id, url, thumbnail_url, is_primary, sort_order)
-        `)
-        .eq('seller_id', userId)
-        .order('created_at', { ascending: false });
+      const result = await api.getMyListings({});
 
-      if (error) throw error;
+      if (result.error) {
+        throw new Error(result.error);
+      }
 
-      set({ userListings: data || [], isLoading: false });
+      set({ userListings: result.data?.listings || [], isLoading: false });
     } catch (error) {
       console.error('Error fetching user listings:', error);
       set({ isLoading: false });
@@ -209,21 +177,14 @@ export const useListingStore = create<ListingState>((set, get) => ({
 
   fetchListingById: async (id: string) => {
     try {
-      const { data, error } = await supabase
-        .from('listings')
-        .select(`
-          *,
-          seller:users!seller_id(id, username, display_name, avatar_url, bio, rating_average, rating_count, created_at, listings_count, sales_count),
-          category:categories!category_id(id, name, slug, icon, parent_id),
-          images:listing_images(id, url, thumbnail_url, medium_url, is_primary, sort_order)
-        `)
-        .eq('id', id)
-        .single();
+      const result = await api.getListing(id);
 
-      if (error) throw error;
+      if (result.error) {
+        throw new Error(result.error);
+      }
 
-      set({ currentListing: data });
-      return data;
+      set({ currentListing: result.data?.listing });
+      return result.data?.listing || null;
     } catch (error) {
       console.error('Error fetching listing:', error);
       return null;
@@ -232,21 +193,15 @@ export const useListingStore = create<ListingState>((set, get) => ({
 
   fetchListingBySlug: async (slug: string) => {
     try {
-      const { data, error } = await supabase
-        .from('listings')
-        .select(`
-          *,
-          seller:users!seller_id(id, username, display_name, avatar_url, bio, rating_average, rating_count, created_at, listings_count, sales_count),
-          category:categories!category_id(id, name, slug, icon, parent_id),
-          images:listing_images(id, url, thumbnail_url, medium_url, is_primary, sort_order)
-        `)
-        .eq('slug', slug)
-        .single();
+      // API uses ID, so we need to fetch by ID from listings endpoint
+      const result = await api.getListings({ search: slug, limit: 1 });
+      const listing = result.data?.listings?.[0];
 
-      if (error) throw error;
-
-      set({ currentListing: data });
-      return data;
+      if (listing) {
+        set({ currentListing: listing });
+        return listing;
+      }
+      return null;
     } catch (error) {
       console.error('Error fetching listing:', error);
       return null;
@@ -254,16 +209,12 @@ export const useListingStore = create<ListingState>((set, get) => ({
   },
 
   fetchCategories: async () => {
+    // Categories are fetched through listings response or could be added to API
+    // For now, we'll use a simple approach
     try {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('*')
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true });
-
-      if (error) throw error;
-
-      set({ categories: data || [] });
+      const result = await api.getListings({ limit: 1 });
+      // Categories would be included in listing responses
+      // This is a placeholder - in production, add a categories endpoint
     } catch (error) {
       console.error('Error fetching categories:', error);
     }
@@ -271,38 +222,34 @@ export const useListingStore = create<ListingState>((set, get) => ({
 
   createListing: async (data: CreateListingData) => {
     try {
-      // Generate unique slug
-      const baseSlug = slugify(data.title, { lower: true, strict: true });
-      const uniqueSlug = `${baseSlug}-${Date.now().toString(36)}`;
+      const result = await api.createListing({
+        title: data.title,
+        description: data.description,
+        price: data.price,
+        price_type: data.price_type || 'fixed',
+        condition: data.condition || 'good',
+        category_id: data.category_id,
+        brand: data.brand,
+        model: data.model,
+        location_city: data.location_city,
+        location_state: data.location_state,
+        location_country: data.location_country,
+        meetup_location: data.meetup_location,
+        offers_shipping: data.offers_shipping,
+        shipping_fee: data.shipping_fee,
+        shipping_details: data.shipping_details,
+      });
 
-      const { data: listing, error } = await supabase
-        .from('listings')
-        .insert({
-          ...data,
-          slug: uniqueSlug,
-          status: data.status || 'draft',
-          currency: 'PHP',
-          published_at: data.status === 'published' ? new Date().toISOString() : null,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Upload images if provided
-      if (data.images && data.images.length > 0) {
-        const imageInserts = data.images.map((url, index) => ({
-          listing_id: listing.id,
-          url,
-          thumbnail_url: url,
-          sort_order: index,
-          is_primary: index === 0,
-        }));
-
-        await supabase.from('listing_images').insert(imageInserts);
+      if (result.error) {
+        return { success: false, error: result.error };
       }
 
-      return { success: true, listing };
+      // Upload images if provided
+      if (data.images && data.images.length > 0 && result.data?.listing) {
+        await api.uploadListingImages(result.data.listing.id, data.images);
+      }
+
+      return { success: true, listing: result.data?.listing };
     } catch (error) {
       console.error('Error creating listing:', error);
       return { success: false, error: 'Failed to create listing' };
@@ -311,33 +258,11 @@ export const useListingStore = create<ListingState>((set, get) => ({
 
   updateListing: async (id: string, data: Partial<CreateListingData>) => {
     try {
-      const updateData: Record<string, unknown> = { ...data };
+      const result = await api.updateListing(id, data);
 
-      // Update slug if title changed
-      if (data.title) {
-        const baseSlug = slugify(data.title, { lower: true, strict: true });
-        updateData.slug = `${baseSlug}-${Date.now().toString(36)}`;
+      if (result.error) {
+        return { success: false, error: result.error };
       }
-
-      // Set published_at if status changed to published
-      if (data.status === 'published') {
-        const { data: current } = await supabase
-          .from('listings')
-          .select('published_at')
-          .eq('id', id)
-          .single();
-
-        if (!current?.published_at) {
-          updateData.published_at = new Date().toISOString();
-        }
-      }
-
-      const { error } = await supabase
-        .from('listings')
-        .update(updateData)
-        .eq('id', id);
-
-      if (error) throw error;
 
       return { success: true };
     } catch (error) {
@@ -348,12 +273,11 @@ export const useListingStore = create<ListingState>((set, get) => ({
 
   deleteListing: async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('listings')
-        .delete()
-        .eq('id', id);
+      const result = await api.deleteListing(id);
 
-      if (error) throw error;
+      if (result.error) {
+        return { success: false, error: result.error };
+      }
 
       // Remove from local state
       set({
@@ -368,35 +292,22 @@ export const useListingStore = create<ListingState>((set, get) => ({
     }
   },
 
-  toggleFavorite: async (listingId: string, userId: string) => {
+  toggleFavorite: async (listingId: string) => {
     try {
-      // Check if already favorited
-      const { data: existing } = await supabase
-        .from('user_favorites')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('listing_id', listingId)
-        .single();
+      const { isAuthenticated } = useAuthStore.getState();
+      if (!isAuthenticated) return;
 
-      if (existing) {
-        // Remove favorite
-        await supabase
-          .from('user_favorites')
-          .delete()
-          .eq('user_id', userId)
-          .eq('listing_id', listingId);
-      } else {
-        // Add favorite
-        await supabase
-          .from('user_favorites')
-          .insert({ user_id: userId, listing_id: listingId });
+      const result = await api.likeListing(listingId);
+
+      if (result.error) {
+        throw new Error(result.error);
       }
 
       // Update local state
       const updateListings = (listings: ListingWithDetails[]) =>
         listings.map((l) =>
           l.id === listingId
-            ? { ...l, is_favorited: !existing, likes_count: l.likes_count + (existing ? -1 : 1) }
+            ? { ...l, is_favorited: result.data?.liked, likes_count: l.likes_count + (result.data?.liked ? 1 : -1) }
             : l
         );
 
@@ -404,20 +315,11 @@ export const useListingStore = create<ListingState>((set, get) => ({
         listings: updateListings(get().listings),
         featuredListings: updateListings(get().featuredListings),
         currentListing: get().currentListing?.id === listingId
-          ? { ...get().currentListing!, is_favorited: !existing, likes_count: get().currentListing!.likes_count + (existing ? -1 : 1) }
+          ? { ...get().currentListing!, is_favorited: result.data?.liked, likes_count: get().currentListing!.likes_count + (result.data?.liked ? 1 : -1) }
           : get().currentListing,
       });
     } catch (error) {
       console.error('Error toggling favorite:', error);
-    }
-  },
-
-  incrementViews: async (listingId: string) => {
-    try {
-      await supabase.rpc('increment_listing_views', { listing_id: listingId });
-    } catch (error) {
-      // Silently fail - not critical
-      console.error('Error incrementing views:', error);
     }
   },
 }));

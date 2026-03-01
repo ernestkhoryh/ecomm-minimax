@@ -31,7 +31,7 @@ export default function ListingCard({ listing, variant = 'default' }: ListingCar
 
     setIsLiked(!isLiked);
     setLikesCount(isLiked ? likesCount - 1 : likesCount + 1);
-    await toggleFavorite(listing.id, user.id);
+    await toggleFavorite(listing.id);
   };
 
   if (variant === 'horizontal') {
