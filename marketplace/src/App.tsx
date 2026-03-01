@@ -81,11 +81,11 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     // Get unread message count when user is authenticated
     if (isAuthenticated && user) {
-      getUnreadCount(user.id);
+      getUnreadCount();
 
       // Refresh every 30 seconds
       const interval = setInterval(() => {
-        getUnreadCount(user.id);
+        getUnreadCount();
       }, 30000);
 
       return () => clearInterval(interval);

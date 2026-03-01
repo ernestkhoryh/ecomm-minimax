@@ -37,7 +37,7 @@ import toast from 'react-hot-toast';
 export default function ListingDetailPage() {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const { currentListing, fetchListingBySlug, toggleFavorite, incrementViews } = useListingStore();
+  const { currentListing, fetchListingBySlug, toggleFavorite } = useListingStore();
   const { user, isAuthenticated } = useAuthStore();
   const { startConversation } = useMessageStore();
   const [currentImageIndex, setCurrentImageIndex] = React.useState(0);
@@ -56,9 +56,8 @@ export default function ListingDetailPage() {
   React.useEffect(() => {
     if (currentListing) {
       setIsLiked(currentListing.is_favorited || false);
-      incrementViews(currentListing.id);
     }
-  }, [currentListing, incrementViews]);
+  }, [currentListing]);
 
   const handleLike = async () => {
     if (!isAuthenticated || !user || !currentListing) {
@@ -67,7 +66,7 @@ export default function ListingDetailPage() {
     }
 
     setIsLiked(!isLiked);
-    await toggleFavorite(currentListing.id, user.id);
+    await toggleFavorite(currentListing.id);
     toast.success(isLiked ? 'Removed from favorites' : 'Added to favorites');
   };
 
@@ -104,7 +103,6 @@ export default function ListingDetailPage() {
     if (!currentListing || !currentListing.seller || !user) return;
 
     const result = await startConversation(
-      user.id,
       currentListing.seller_id,
       currentListing.id,
       message || `Hi, I'm interested in "${currentListing.title}"`

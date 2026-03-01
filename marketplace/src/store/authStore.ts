@@ -16,6 +16,7 @@ interface AuthState {
   refreshUser: () => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<{ success: boolean; error?: string }>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
+  loginWithGoogle: () => Promise<void>;
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
 }
@@ -159,6 +160,11 @@ export const useAuthStore = create<AuthState>()(
         } catch {
           return { success: false, error: 'An error occurred' };
         }
+      },
+
+      loginWithGoogle: async () => {
+        // Google OAuth not implemented in backend yet - show message
+        console.log('Google login not implemented');
       },
     }),
     {

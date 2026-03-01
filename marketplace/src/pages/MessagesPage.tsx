@@ -43,7 +43,7 @@ export default function MessagesPage() {
       return;
     }
     if (user) {
-      fetchConversations(user.id);
+      fetchConversations();
       const unsubscribe = subscribeToConversations(user.id);
       return () => unsubscribe();
     }
@@ -54,7 +54,7 @@ export default function MessagesPage() {
       fetchConversation(conversationId);
       fetchMessages(conversationId);
       if (user) {
-        markAsRead(conversationId, user.id);
+        markAsRead(conversationId);
       }
       const unsubscribe = subscribeToMessages(conversationId);
       return () => unsubscribe();
@@ -71,7 +71,7 @@ export default function MessagesPage() {
     const content = messageInput.trim();
     setMessageInput('');
 
-    await sendMessage(conversationId, user.id, content);
+    await sendMessage(conversationId, content);
   };
 
   const getOtherUser = (conv: ConversationWithDetails) => {

@@ -374,7 +374,7 @@ export interface ListingWithDetails extends Listing {
 export interface ConversationWithDetails extends Conversation {
   buyer?: User;
   seller?: User;
-  listing?: Listing;
+  listing?: ListingWithDetails;
   messages?: Message[];
 }
 
