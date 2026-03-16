@@ -193,17 +193,18 @@ export const useListingStore = create<ListingState>((set, get) => ({
 
   fetchListingBySlug: async (slug: string) => {
     try {
-      // API uses ID, so we need to fetch by ID from listings endpoint
-      const result = await api.getListings({ search: slug, limit: 1 });
-      const listing = result.data?.listings?.[0];
+      const result = await api.getListingBySlug(slug);
 
-      if (listing) {
-        set({ currentListing: listing });
-        return listing;
+      if (result.error) {
+        throw new Error(result.error);
       }
-      return null;
+
+      const listing = result.data?.listing || null;
+      set({ currentListing: listing });
+      return listing;
     } catch (error) {
       console.error('Error fetching listing:', error);
+      set({ currentListing: null });
       return null;
     }
   },

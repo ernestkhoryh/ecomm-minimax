@@ -17,6 +17,7 @@ import {
   SettingsPage,
   LoginPage,
   RegisterPage,
+  GoogleAuthCallbackPage,
 } from '@/pages';
 import { AdminDashboard } from '@/pages/admin';
 
@@ -98,7 +99,8 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router>
+      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+
         <AppInitializer>
           <Routes>
             {/* Public routes with layout */}
@@ -113,6 +115,7 @@ function App() {
               {/* Auth routes */}
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/auth/google/callback" element={<GoogleAuthCallbackPage />} />
 
               {/* Protected routes */}
               <Route

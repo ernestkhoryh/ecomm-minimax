@@ -3,7 +3,6 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { useMessageStore } from '@/store/messageStore';
 import {
-  Search,
   Plus,
   MessageCircle,
   Bell,
@@ -27,13 +26,13 @@ export default function Header() {
   const { unreadCount } = useMessageStore();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
-  const [searchQuery, setSearchQuery] = React.useState('');
+  const [electronicsChoice, setElectronicsChoice] = React.useState('');
+  const [fashionChoice, setFashionChoice] = React.useState('');
+  const [luxuryChoice, setLuxuryChoice] = React.useState('');
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-    }
+  const handleCategorySelect = (group: string, value: string) => {
+    if (!value) return;
+    navigate(`/browse?q=${encodeURIComponent(value)}&group=${encodeURIComponent(group)}`);
   };
 
   const handleLogout = async () => {
@@ -54,19 +53,58 @@ export default function Header() {
             <span className="text-xl font-bold text-gray-900 hidden sm:block">MarketHub</span>
           </Link>
 
-          {/* Search Bar - Desktop */}
-          <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-xl mx-8">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search for items..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-gray-100 border border-transparent rounded-xl focus:bg-white focus:border-gray-300 focus:ring-2 focus:ring-red-500/20 transition-all"
-              />
-            </div>
-          </form>
+          {/* Category Selectors - Desktop */}
+          <div className="hidden md:grid flex-1 max-w-4xl mx-6 grid-cols-4 gap-2">
+            <select
+              value={electronicsChoice}
+              onChange={(e) => {
+                setElectronicsChoice(e.target.value);
+                handleCategorySelect('Electronics', e.target.value);
+              }}
+              className="w-full px-3 py-2.5 bg-gray-100 border border-transparent rounded-xl focus:bg-white focus:border-gray-300 focus:ring-2 focus:ring-red-500/20 transition-all text-sm text-gray-700"
+            >
+              <option value="">Electronics</option>
+              <option value="PC & Tech">PC & Tech</option>
+              <option value="Mobiles & Gadgets">Mobiles & Gadgets</option>
+              <option value="PC Games">PC Games</option>
+              <option value="Home Appliances">Home Appliances</option>
+              <option value="Audio">Audio</option>
+              <option value="Photography">Photography</option>
+            </select>
+            <select
+              value={fashionChoice}
+              onChange={(e) => {
+                setFashionChoice(e.target.value);
+                handleCategorySelect('Fashion', e.target.value);
+              }}
+              className="w-full px-3 py-2.5 bg-gray-100 border border-transparent rounded-xl focus:bg-white focus:border-gray-300 focus:ring-2 focus:ring-red-500/20 transition-all text-sm text-gray-700"
+            >
+              <option value="">Fashion</option>
+              <option value="Men">Men</option>
+              <option value="Women">Women</option>
+            </select>
+            <select
+              value={luxuryChoice}
+              onChange={(e) => {
+                setLuxuryChoice(e.target.value);
+                handleCategorySelect('Luxury', e.target.value);
+              }}
+              className="w-full px-3 py-2.5 bg-gray-100 border border-transparent rounded-xl focus:bg-white focus:border-gray-300 focus:ring-2 focus:ring-red-500/20 transition-all text-sm text-gray-700"
+            >
+              <option value="">Luxury</option>
+              <option value="Bags & Wallets">Bags & Wallets</option>
+              <option value="Apparel">Apparel</option>
+              <option value="Accessories">Accessories</option>
+              <option value="Watches">Watches</option>
+              <option value="Footwear">Footwear</option>
+            </select>
+            <Link
+              to="/browse"
+              className="inline-flex items-center justify-center px-4 py-2.5 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-xl font-semibold hover:from-red-600 hover:to-orange-600 transition-all text-sm"
+            >
+              All categories
+            </Link>
+          </div>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-2">
@@ -214,19 +252,58 @@ export default function Header() {
           </button>
         </div>
 
-        {/* Mobile Search */}
-        <form onSubmit={handleSearch} className="md:hidden pb-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search for items..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-gray-100 border border-transparent rounded-xl focus:bg-white focus:border-gray-300 focus:ring-2 focus:ring-red-500/20 transition-all"
-            />
-          </div>
-        </form>
+        {/* Mobile Category Selectors */}
+        <div className="md:hidden pb-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <select
+            value={electronicsChoice}
+            onChange={(e) => {
+              setElectronicsChoice(e.target.value);
+              handleCategorySelect('Electronics', e.target.value);
+            }}
+            className="w-full px-3 py-2.5 bg-gray-100 border border-transparent rounded-xl focus:bg-white focus:border-gray-300 focus:ring-2 focus:ring-red-500/20 transition-all text-sm text-gray-700"
+          >
+            <option value="">Electronics</option>
+            <option value="PC & Tech">PC & Tech</option>
+            <option value="Mobiles & Gadgets">Mobiles & Gadgets</option>
+            <option value="PC Games">PC Games</option>
+            <option value="Home Appliances">Home Appliances</option>
+            <option value="Audio">Audio</option>
+            <option value="Photography">Photography</option>
+          </select>
+          <select
+            value={fashionChoice}
+            onChange={(e) => {
+              setFashionChoice(e.target.value);
+              handleCategorySelect('Fashion', e.target.value);
+            }}
+            className="w-full px-3 py-2.5 bg-gray-100 border border-transparent rounded-xl focus:bg-white focus:border-gray-300 focus:ring-2 focus:ring-red-500/20 transition-all text-sm text-gray-700"
+          >
+            <option value="">Fashion</option>
+            <option value="Men">Men</option>
+            <option value="Women">Women</option>
+          </select>
+          <select
+            value={luxuryChoice}
+            onChange={(e) => {
+              setLuxuryChoice(e.target.value);
+              handleCategorySelect('Luxury', e.target.value);
+            }}
+            className="w-full px-3 py-2.5 bg-gray-100 border border-transparent rounded-xl focus:bg-white focus:border-gray-300 focus:ring-2 focus:ring-red-500/20 transition-all text-sm text-gray-700"
+          >
+            <option value="">Luxury</option>
+            <option value="Bags & Wallets">Bags & Wallets</option>
+            <option value="Apparel">Apparel</option>
+            <option value="Accessories">Accessories</option>
+            <option value="Watches">Watches</option>
+            <option value="Footwear">Footwear</option>
+          </select>
+          <Link
+            to="/browse"
+            className="inline-flex items-center justify-center px-4 py-2.5 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-xl font-semibold hover:from-red-600 hover:to-orange-600 transition-all text-sm"
+          >
+            All categories
+          </Link>
+        </div>
       </div>
 
       {/* Mobile Menu */}

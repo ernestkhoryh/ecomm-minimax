@@ -3,6 +3,10 @@ const slugify = require('slugify');
 const pool = require('../config/db');
 const { buildPagination } = require('../utils/query');
 
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 async function listListings(req, res, next) {
   try {
     const { q, categoryId, minPrice, maxPrice, status = 'published', page, limit } = req.query;
@@ -24,7 +28,11 @@ async function listListings(req, res, next) {
 
     if (categoryId) {
       params.push(categoryId);
-      where.push(`l.category_id = $${params.length}`);
+      if (isUuid(categoryId)) {
+        where.push(`l.category_id = $${params.length}`);
+      } else {
+        where.push(`c.slug = $${params.length}`);
+      }
     }
 
     if (minPrice) {

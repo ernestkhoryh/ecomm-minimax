@@ -6,4 +6,4 @@ export { default as MyListingsPage } from './MyListingsPage';
 export { default as MessagesPage } from './MessagesPage';
 export { default as ProfilePage } from './ProfilePage';
 export { default as SettingsPage } from './SettingsPage';
-export { LoginPage, RegisterPage } from './auth';
+export { LoginPage, RegisterPage, GoogleAuthCallbackPage } from './auth';

@@ -35,7 +35,7 @@ DB_HOST=127.0.0.1
 DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=postgres
-DB_NAME=marketplace
+DB_NAME=ecomm_minimax_db
 DB_SSL=false
 PORT=4000
 JWT_SECRET=change-me
@@ -44,12 +44,12 @@ JWT_EXPIRES_IN=7d
 3.Create the database and apply schema:
 
 bash
-createdb marketplace
-psql -d marketplace -f backend/sql/schema.postgresql.sql
+createdb ecomm_minimax_db
+psql -d ecomm_minimax_db -f backend/sql/schema.postgresql.sql
 
-"C:\Program Files\PostgreSQL\18\bin\createdb.exe" -h localhost -p 5432 -U postgres marketplace
+"C:\Program Files\PostgreSQL\18\bin\createdb.exe" -h localhost -p 5432 -U postgres ecomm_minimax_db
 
-"C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -d marketplace -f
+"C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -d ecomm_minimax_db -f
 "C:\Users\ernes\test-folder\ecomm-minimax\backend\sql\schema.postgresql.sql"
 
 4.Run the API:
