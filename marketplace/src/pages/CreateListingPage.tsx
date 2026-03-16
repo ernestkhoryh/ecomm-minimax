@@ -6,7 +6,6 @@ import { z } from 'zod';
 import { useDropzone } from 'react-dropzone';
 import { useListingStore } from '@/store/listingStore';
 import { useAuthStore } from '@/store/authStore';
-import { supabase } from '@/lib/supabase';
 import {
   Upload,
   X,
@@ -158,38 +157,19 @@ export default function CreateListingPage() {
   };
 
   const uploadImages = async (): Promise<string[]> => {
-    const uploadedUrls: string[] = [];
+    const existingUrls = images
+      .filter((image) => Boolean(image.url))
+      .map((image) => image.url);
 
-    for (const image of images) {
-      if (image.url) {
-        // Already uploaded
-        uploadedUrls.push(image.url);
-      } else if (image.file) {
-        // Need to upload
-        const filename = `${user?.id}/${Date.now()}-${image.file.name}`;
-        const { data, error } = await supabase.storage
-          .from('listings')
-          .upload(filename, image.file);
-
-        if (error) throw error;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('listings')
-          .getPublicUrl(data.path);
-
-        uploadedUrls.push(publicUrl);
-      }
+    const localImagesCount = images.filter((image) => Boolean(image.file) && !image.url).length;
+    if (localImagesCount > 0) {
+      toast.error('Image upload is temporarily unavailable without storage support.');
     }
 
-    return uploadedUrls;
+    return existingUrls;
   };
 
   const onSubmit = async (data: ListingFormData, status: ListingStatus = 'published') => {
-    if (images.length === 0) {
-      toast.error('Please add at least one image');
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import api from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { ListingGrid } from '@/components/listings';
 import {
@@ -42,53 +42,34 @@ export default function ProfilePage() {
 
       setIsLoading(true);
       try {
-        // Fetch user profile
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('username', username)
-          .single();
+        const listingResult = await api.getListings({ limit: 200 });
+        if (listingResult.error) throw new Error(listingResult.error);
 
-        if (userError) throw userError;
+        const listingsData = (listingResult.data?.listings || []).filter(
+          (listing) => listing?.seller?.username?.toLowerCase() === username.toLowerCase()
+        ) as ListingWithDetails[];
+
+        setListings(listingsData);
+
+        const userData = listingsData[0]?.seller as UserProfile | undefined;
+        if (!userData) {
+          setProfile(null);
+          setReviews([]);
+          return;
+        }
+
         setProfile(userData);
 
-        // Fetch user listings
-        const { data: listingsData } = await supabase
-          .from('listings')
-          .select(`
-            *,
-            category:categories!category_id(id, name, slug, icon),
-            images:listing_images(id, url, thumbnail_url, is_primary, sort_order)
-          `)
-          .eq('seller_id', userData.id)
-          .eq('status', 'published')
-          .order('created_at', { ascending: false });
+        const reviewsResult = await api.getUserReviews(userData.id, { limit: 50 });
+        if (!reviewsResult.error) {
+          setReviews((reviewsResult.data?.reviews || []) as ReviewWithDetails[]);
+        }
 
-        setListings(listingsData || []);
-
-        // Fetch user reviews
-        const { data: reviewsData } = await supabase
-          .from('reviews')
-          .select(`
-            *,
-            reviewer:users!reviewer_id(id, username, display_name, avatar_url)
-          `)
-          .eq('reviewed_user_id', userData.id)
-          .eq('is_visible', true)
-          .order('created_at', { ascending: false });
-
-        setReviews(reviewsData || []);
-
-        // Check if following
         if (currentUser && currentUser.id !== userData.id) {
-          const { data: followData } = await supabase
-            .from('user_follows')
-            .select('*')
-            .eq('follower_id', currentUser.id)
-            .eq('following_id', userData.id)
-            .single();
-
-          setIsFollowing(!!followData);
+          const followersResult = await api.getFollowers(userData.id, { limit: 200 });
+          setIsFollowing(
+            Boolean((followersResult.data?.followers || []).find((follower) => follower.id === currentUser.id))
+          );
         }
       } catch (error) {
         console.error('Error fetching profile:', error);
@@ -107,22 +88,17 @@ export default function ProfilePage() {
     }
 
     try {
-      if (isFollowing) {
-        await supabase
-          .from('user_follows')
-          .delete()
-          .eq('follower_id', currentUser.id)
-          .eq('following_id', profile.id);
+      const result = await api.followUser(profile.id);
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      const nextFollowing = Boolean(result.data?.following);
+      if (isFollowing && !nextFollowing) {
         setIsFollowing(false);
         toast.success('Unfollowed successfully');
       } else {
-        await supabase
-          .from('user_follows')
-          .insert({
-            follower_id: currentUser.id,
-            following_id: profile.id,
-          });
-        setIsFollowing(true);
+        setIsFollowing(nextFollowing);
         toast.success('Following!');
       }
     } catch (error) {

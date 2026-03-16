@@ -5,7 +5,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useDropzone } from 'react-dropzone';
 import { useAuthStore } from '@/store/authStore';
-import { supabase } from '@/lib/supabase';
 import {
   User,
   Mail,
@@ -107,20 +106,10 @@ export default function SettingsPage() {
     try {
       let avatar_url = user.avatar_url;
 
-      // Upload avatar if changed
+      // Avatar file upload previously used Supabase Storage.
+      // Backend now uses PostgreSQL-only APIs and does not expose file upload yet.
       if (avatarFile) {
-        const filename = `${user.id}/avatar-${Date.now()}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('avatars')
-          .upload(filename, avatarFile);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('avatars')
-          .getPublicUrl(uploadData.path);
-
-        avatar_url = publicUrl;
+        toast.error('Avatar upload is not available right now.');
       }
 
       const result = await updateProfile({
