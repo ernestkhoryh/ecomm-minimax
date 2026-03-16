@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
-import { supabase } from '@/lib/supabase';
+import api from '@/lib/api';
 import {
   Users,
   Package,
@@ -66,51 +66,30 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // Fetch stats
-      const [usersCount, listingsCount, messagesCount, reportsCount] = await Promise.all([
-        supabase.from('users').select('id', { count: 'exact', head: true }),
-        supabase.from('listings').select('id', { count: 'exact', head: true }),
-        supabase.from('messages').select('id', { count: 'exact', head: true }),
-        supabase.from('reports').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
-      ]);
+      const listingsResult = await api.getListings({ page: 1, limit: 50 });
+      const listingsData = (listingsResult.data?.listings || []) as Listing[];
+      setListings(listingsData);
 
+      // Fallback user list from listing sellers since admin user-list endpoint does not exist yet.
+      const usersData = Array.from(
+        new Map(
+          listingsData
+            .map((listing: any) => listing.seller)
+            .filter(Boolean)
+            .map((seller: any) => [seller.id, seller])
+        ).values()
+      ) as User[];
+      setUsers(usersData);
+
+      setReports([]);
       setStats({
-        totalUsers: usersCount.count || 0,
-        totalListings: listingsCount.count || 0,
-        totalMessages: messagesCount.count || 0,
-        totalReports: reportsCount.count || 0,
-        usersChange: 12,
-        listingsChange: 8,
+        totalUsers: usersData.length,
+        totalListings: listingsData.length,
+        totalMessages: 0,
+        totalReports: 0,
+        usersChange: 0,
+        listingsChange: 0,
       });
-
-      // Fetch recent users
-      const { data: usersData } = await supabase
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50);
-      setUsers(usersData || []);
-
-      // Fetch recent listings
-      const { data: listingsData } = await supabase
-        .from('listings')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50);
-      setListings(listingsData || []);
-
-      // Fetch pending reports
-      const { data: reportsData } = await supabase
-        .from('reports')
-        .select(`
-          *,
-          reporter:users!reporter_id(id, username, display_name),
-          reported_user:users!reported_user_id(id, username, display_name),
-          reported_listing:listings!reported_listing_id(id, title, slug)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(50);
-      setReports(reportsData || []);
     } catch (error) {
       console.error('Error fetching admin data:', error);
     } finally {
@@ -118,28 +97,16 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleBanUser = async (userId: string, ban: boolean) => {
-    try {
-      await supabase
-        .from('users')
-        .update({
-          is_banned: ban,
-          banned_at: ban ? new Date().toISOString() : null,
-        })
-        .eq('id', userId);
-
-      toast.success(ban ? 'User banned' : 'User unbanned');
-      fetchData();
-    } catch (error) {
-      toast.error('Action failed');
-    }
+  const handleBanUser = async (_userId: string, _ban: boolean) => {
+    toast.error('Ban/unban is not available on the PostgreSQL API yet.');
   };
 
   const handleDeleteListing = async (listingId: string) => {
     if (!confirm('Are you sure you want to delete this listing?')) return;
 
     try {
-      await supabase.from('listings').delete().eq('id', listingId);
+      const result = await api.deleteListing(listingId);
+      if (result.error) throw new Error(result.error);
       toast.success('Listing deleted');
       fetchData();
     } catch (error) {
@@ -149,10 +116,8 @@ export default function AdminDashboard() {
 
   const handleSuspendListing = async (listingId: string) => {
     try {
-      await supabase
-        .from('listings')
-        .update({ status: 'suspended' })
-        .eq('id', listingId);
+      const result = await api.updateListing(listingId, { status: 'suspended' });
+      if (result.error) throw new Error(result.error);
       toast.success('Listing suspended');
       fetchData();
     } catch (error) {
@@ -160,21 +125,8 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleResolveReport = async (reportId: string, action: 'resolved' | 'dismissed') => {
-    try {
-      await supabase
-        .from('reports')
-        .update({
-          status: action,
-          resolved_by: user?.id,
-          resolved_at: new Date().toISOString(),
-        })
-        .eq('id', reportId);
-      toast.success(`Report ${action}`);
-      fetchData();
-    } catch (error) {
-      toast.error('Action failed');
-    }
+  const handleResolveReport = async (_reportId: string, _action: 'resolved' | 'dismissed') => {
+    toast.error('Reports are not available on the PostgreSQL API yet.');
   };
 
   const statCards = [
