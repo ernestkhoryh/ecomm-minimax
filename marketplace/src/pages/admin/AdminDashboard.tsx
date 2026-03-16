@@ -162,7 +162,7 @@ export default function AdminDashboard() {
 
   const handleResolveReport = async (reportId: string, action: 'resolved' | 'dismissed') => {
     try {
-      await supabase
+      await 
         .from('reports')
         .update({
           status: action,
